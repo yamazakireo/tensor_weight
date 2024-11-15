@@ -9,19 +9,19 @@ from collections import OrderedDict
 
 class TwoLayerNet:
 
-    def __init__(self, input_size, hidden_size, tensor_weight, output_size, weight_init_std = 0.01):
+    def __init__(self, input_size, hidden_size, output_size, tensor_weight = 4, weight_init_std = 0.01):
         # 重みの初期化
         self.params = {}
-        self.params['W1'] = weight_init_std * np.random.randn(tensor_weight, input_size, hidden_size)
+        self.params['W1'] = weight_init_std * np.tile(np.random.randn(input_size, hidden_size), (tensor_weight,1,1))
         self.params['b1'] = np.zeros(hidden_size)
-        self.params['W2'] = weight_init_std * np.random.randn(tensor_weight, hidden_size, output_size) 
+        self.params['W2'] = weight_init_std * np.random.randn(hidden_size, output_size) 
         self.params['b2'] = np.zeros(output_size)
 
         # レイヤの生成
         self.layers = OrderedDict()
         self.layers['Affine1'] = TensorAffineDrop(self.params['W1'], self.params['b1'])
         self.layers['Relu1'] = Relu()
-        self.layers['Affine2'] = TensorAffineDrop(self.params['W2'], self.params['b2'])
+        self.layers['Affine2'] = Affine(self.params['W2'], self.params['b2'])
 
         self.lastLayer = SoftmaxWithLoss()
         
@@ -34,6 +34,7 @@ class TwoLayerNet:
     # x:入力データ, t:教師データ
     def loss(self, x, t):
         y = self.predict(x)
+        #(batch_size*dim(t))のcross_entropy_lossの行列
         return self.lastLayer.forward(y, t)
     
     def accuracy(self, x, t):
@@ -63,6 +64,8 @@ class TwoLayerNet:
         # backward
         dout = 1
         dout = self.lastLayer.backward(dout)
+        #final_layerの確信度に応じた誤差を伝播させる
+        #dout = self.loss(x,t).sum(axis=0) * self.lastLayer.backward(dout)
         
         layers = list(self.layers.values())
         layers.reverse()
